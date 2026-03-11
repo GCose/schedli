@@ -1,0 +1,23 @@
+import { z } from "zod";
+import { connectDB } from "@/lib/db";
+import { AppError } from "@/lib/utils/AppError";
+import { NextRequest, NextResponse } from "next/server";
+import { resetPassword } from "@/lib/services/auth.service";
+
+const schema = z.object({
+    token: z.string().min(1, "Reset token is required"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export async function POST(req: NextRequest) {
+    try {
+        await connectDB();
+        const body = schema.parse(await req.json());
+        await resetPassword(body);
+        return NextResponse.json({ message: "Password reset successfully" }, { status: 200 });
+    } catch (err) {
+        if (err instanceof z.ZodError) return NextResponse.json({ message: err.issues[0].message }, { status: 400 });
+        if (err instanceof AppError) return NextResponse.json({ message: err.message }, { status: err.statusCode });
+        return NextResponse.json({ message: "Something went wrong" }, { status: 500 });
+    }
+}
