@@ -36,4 +36,6 @@ export interface AuthResponse {
         role: "personal" | "enterprise";
         isEmailVerified: boolean;
     };
+    accessToken: string;
+    refreshToken: string;
 }

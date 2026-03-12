@@ -1,23 +1,38 @@
 import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
-import { logoutUser } from "@/lib/services/auth.service";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
-import { extractBearerToken, verifyAccessToken } from "@/lib/middleware/auth.middleware";
+import { refreshAccessToken } from "@/lib/services/auth.service";
 
 export async function POST(req: NextRequest) {
     try {
         await connectDB();
-        const token = extractBearerToken(req.headers.get("authorization"));
-        const payload = verifyAccessToken(token);
-        await logoutUser(payload.userId);
+        const token = req.cookies.get("refreshToken")?.value;
+
+        if (!token) {
+            throw new AppError(
+                "Refresh token is missing.",
+                401,
+                ErrorType.AUTHENTICATION,
+                ErrorCode.AUTH_UNAUTHORIZED
+            );
+        }
+
+        const { accessToken, refreshToken } = await refreshAccessToken(token);
 
         const response = NextResponse.json({
             status: "success",
-            data: { message: "Logged out successfully" },
+            data: { accessToken },
         }, { status: 200 });
 
-        response.cookies.set("refreshToken", "", { httpOnly: true, maxAge: 0, path: "/" });
+        response.cookies.set("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 30,
+            path: "/",
+        });
+
         return response;
     } catch (err) {
         if (err instanceof AppError) return NextResponse.json({

@@ -1,12 +1,62 @@
-# Schedli API Documentation
+# Schedli — API Reference
 
-**Version:** 1.0  
-**Base URL:** `http://localhost:3000` (development) / `https://schedli.vercel.app` (production)  
-**Last Updated:** March 2026
+## Overview
 
-All request bodies must be JSON. Set `Content-Type: application/json` on every request.
+Base URL: `http://localhost:3000` (development), `https://schedli.vercel.app` (production)
 
-Authentication uses httpOnly cookies. After a successful login, the server sets a `token` cookie automatically. All subsequent requests from the browser include this cookie — no manual header configuration needed.
+All requests must include `Content-Type: application/json`.
+
+Protected routes require an `Authorization` header:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+## Response Structure
+
+Every response follows a consistent envelope.
+
+**Success:**
+
+```json
+{
+  "status": "success",
+  "data": {}
+}
+```
+
+**Error:**
+
+```json
+{
+  "status": "error",
+  "error": {
+    "type": "authentication_error",
+    "code": "AUTH_INVALID_CREDENTIALS",
+    "message": "Invalid credentials"
+  }
+}
+```
+
+## Error Types
+
+| Type                   | Description                           |
+| ---------------------- | ------------------------------------- |
+| `authentication_error` | Authentication or account state issue |
+| `authorization_error`  | Insufficient permissions              |
+| `validation_error`     | Request body failed validation        |
+| `not_found_error`      | Requested resource does not exist     |
+| `conflict_error`       | Request conflicts with existing data  |
+| `server_error`         | Unexpected server-side failure        |
+
+## Token Strategy
+
+Authentication uses two tokens:
+
+- **Access token** — short-lived (15 minutes), returned in the response body, sent as a Bearer token on every protected request
+- **Refresh token** — long-lived (30 days), stored in an `httpOnly` cookie named `refreshToken`, used only to obtain a new access token when it expires
+
+When the access token expires, the client calls `POST /api/auth/refresh` silently. The server validates the refresh token, invalidates it, and issues a new access token and a new refresh token (rotation). If the refresh token is also expired or invalid, the user must log in again.
 
 ---
 
@@ -14,178 +64,183 @@ Authentication uses httpOnly cookies. After a successful login, the server sets 
 
 ### Register
 
-Creates a new user account and sends a verification email.
+`POST /api/auth/register`
 
-**POST** `/api/auth/register`  
-**Access:** Public
-
-**Request**
+**Request:**
 
 ```json
 {
   "fullName": "John Doe",
   "email": "johndoe@example.com",
-  "password": "Password@2026"
+  "password": "Password@123"
 }
 ```
 
-**Response** `201`
+**Success — 201:**
 
 ```json
 {
-  "message": "Registration successful. Check your email to verify your account."
+  "status": "success",
+  "data": {
+    "message": "Registration successful. Check your email to verify your account."
+  }
 }
 ```
 
-**Error Responses**
-| Status | Message | Trigger |
-|---|---|---|
-| 400 | Validation error message | Invalid or missing fields |
-| 409 | An account with this email already exists | Email already registered |
-| 500 | Something went wrong | Unexpected server error |
+**Errors:**
 
----
-
-### Verify Email
-
-Verifies a user's email address using the token sent in the verification email.
-
-**POST** `/api/auth/verify-email`  
-**Access:** Public
-
-**Request**
-
-```json
-{
-  "token": "a3f1c2d4e5b6..."
-}
-```
-
-**Response** `200`
-
-```json
-{
-  "message": "Email verified successfully."
-}
-```
-
-**Error Responses**
-| Status | Message | Trigger |
-|---|---|---|
-| 400 | Verification token is required | Missing token field |
-| 400 | Invalid or expired verification link | Token not found or expired (24hr window) |
-| 500 | Something went wrong | Unexpected server error |
-
----
-
-### Resend Verification Email
-
-Sends a new verification email to an unverified account.
-
-**POST** `/api/auth/resend-verification`  
-**Access:** Public
-
-**Request**
-
-```json
-{
-  "email": "johndoe@example.com"
-}
-```
-
-**Response** `200`
-
-```json
-{
-  "message": "If your email is registered and unverified, a new verification link has been sent."
-}
-```
-
-**Error Responses**
-| Status | Message | Trigger |
-|---|---|---|
-| 400 | Invalid email address | Malformed email |
-| 400 | This account is already verified | Account already verified |
-| 500 | Something went wrong | Unexpected server error |
+| Status | Code                        | Message                                     |
+| ------ | --------------------------- | ------------------------------------------- |
+| 400    | `VALIDATION_ERROR`          | "Full name must be at least 2 characters"   |
+| 400    | `VALIDATION_ERROR`          | "Invalid email address"                     |
+| 400    | `VALIDATION_ERROR`          | "Password must be at least 8 characters"    |
+| 409    | `AUTH_EMAIL_ALREADY_EXISTS` | "An account with this email already exists" |
+| 500    | `INTERNAL_SERVER_ERROR`     | "Something went wrong"                      |
 
 ---
 
 ### Login
 
-Authenticates a user and sets an httpOnly cookie containing the JWT.
+`POST /api/auth/login`
 
-**POST** `/api/auth/login`  
-**Access:** Public
-
-**Request**
+**Request:**
 
 ```json
 {
   "email": "johndoe@example.com",
-  "password": "Password@2026",
-  "rememberMe": true
+  "password": "Password@123"
 }
 ```
 
-**Response** `200`
+**Success — 200:**
 
 ```json
 {
-  "user": {
-    "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-    "fullName": "John Doe",
-    "email": "johndoe@example.com",
-    "role": "personal",
-    "isEmailVerified": true
+  "status": "success",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "user": {
+      "id": "64f1a2b3c4d5e6f7a8b9c0d1",
+      "fullName": "John Doe",
+      "email": "johndoe@example.com",
+      "role": "personal",
+      "isEmailVerified": true
+    }
   }
 }
 ```
 
-**Cookie Set on Success**
-| Property | Value |
-|---|---|
-| name | token |
-| httpOnly | true |
-| sameSite | lax |
-| secure | true (production only) |
-| maxAge | 7 days (30 days if rememberMe is true) |
+The refresh token is returned as an `httpOnly` cookie named `refreshToken` with a 30-day max age. The access token expires in 15 minutes.
 
-**Error Responses**
-| Status | Message | Trigger |
-|---|---|---|
-| 400 | Validation error message | Invalid or missing fields |
-| 401 | Invalid email or password | Wrong credentials |
-| 403 | Your account is yet to be verified. | Email not verified |
-| 500 | Something went wrong | Unexpected server error |
+**Errors:**
+
+| Status | Code                       | Message                               |
+| ------ | -------------------------- | ------------------------------------- |
+| 400    | `VALIDATION_ERROR`         | "Invalid email address"               |
+| 400    | `VALIDATION_ERROR`         | "Password is required"                |
+| 401    | `AUTH_INVALID_CREDENTIALS` | "Invalid credentials"                 |
+| 403    | `AUTH_EMAIL_NOT_VERIFIED`  | "Your account is yet to be verified." |
+| 500    | `INTERNAL_SERVER_ERROR`    | "Something went wrong"                |
 
 ---
 
 ### Logout
 
-Clears the authentication cookie.
+`POST /api/auth/logout`
 
-**POST** `/api/auth/logout`  
-**Access:** Public  
-**Body:** None
+Requires `Authorization: Bearer <accessToken>` header. No request body required.
 
-**Response** `200`
+**Success — 200:**
 
 ```json
 {
-  "message": "Logged out successfully."
+  "status": "success",
+  "data": {
+    "message": "Logged out successfully"
+  }
 }
 ```
+
+The refresh token is cleared from the database and the `refreshToken` cookie is invalidated.
+
+**Errors:**
+
+| Status | Code                    | Message                                 |
+| ------ | ----------------------- | --------------------------------------- |
+| 401    | `AUTH_UNAUTHORIZED`     | "Authorization token is missing."       |
+| 401    | `AUTH_EXPIRED_TOKEN`    | "Session expired. Please log in again." |
+| 401    | `AUTH_INVALID_TOKEN`    | "Invalid token."                        |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"                  |
+
+---
+
+### Refresh Access Token
+
+`POST /api/auth/refresh`
+
+No request body required. The `refreshToken` cookie is read automatically.
+
+**Success — 200:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }
+}
+```
+
+A new refresh token is issued and set as an `httpOnly` cookie, replacing the old one (rotation).
+
+**Errors:**
+
+| Status | Code                    | Message                             |
+| ------ | ----------------------- | ----------------------------------- |
+| 401    | `AUTH_UNAUTHORIZED`     | "Refresh token is missing."         |
+| 401    | `AUTH_EXPIRED_TOKEN`    | "Invalid or expired refresh token." |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"              |
+
+---
+
+### Verify Email
+
+`POST /api/auth/verify-email`
+
+**Request:**
+
+```json
+{
+  "token": "a3f1c2e4b5d6a7f8e9c0b1d2a3e4f5c6d7b8a9e0f1c2d3b4a5e6f7c8d9b0a1e2"
+}
+```
+
+**Success — 200:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "message": "Email verified successfully"
+  }
+}
+```
+
+**Errors:**
+
+| Status | Code                    | Message                                |
+| ------ | ----------------------- | -------------------------------------- |
+| 400    | `VALIDATION_ERROR`      | "Verification token is required"       |
+| 400    | `AUTH_EXPIRED_TOKEN`    | "Invalid or expired verification link" |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"                 |
 
 ---
 
 ### Forgot Password
 
-Sends a password reset link to the provided email address.
+`POST /api/auth/forgot-password`
 
-**POST** `/api/auth/forgot-password`  
-**Access:** Public
-
-**Request**
+**Request:**
 
 ```json
 {
@@ -193,57 +248,92 @@ Sends a password reset link to the provided email address.
 }
 ```
 
-**Response** `200`
+**Success — 200:**
 
 ```json
 {
-  "message": "If an account with that email exists, a reset link has been sent."
+  "status": "success",
+  "data": {
+    "message": "If an account with that email exists, a reset link has been sent."
+  }
 }
 ```
 
-**Error Responses**
-| Status | Message | Trigger |
-|---|---|---|
-| 400 | Invalid email address | Malformed email |
-| 500 | Something went wrong | Unexpected server error |
+The response is identical whether or not the email exists. This prevents user enumeration.
+
+**Errors:**
+
+| Status | Code                    | Message                 |
+| ------ | ----------------------- | ----------------------- |
+| 400    | `VALIDATION_ERROR`      | "Invalid email address" |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"  |
 
 ---
 
 ### Reset Password
 
-Resets a user's password using the token from the reset email.
+`POST /api/auth/reset-password`
 
-**POST** `/api/auth/reset-password`  
-**Access:** Public
-
-**Request**
+**Request:**
 
 ```json
 {
-  "token": "b7e2d3f4a5c6...",
-  "password": "NewPassword@2026"
+  "token": "a3f1c2e4b5d6a7f8e9c0b1d2a3e4f5c6d7b8a9e0f1c2d3b4a5e6f7c8d9b0a1e2",
+  "password": "NewPassword@123"
 }
 ```
 
-**Response** `200`
+**Success — 200:**
 
 ```json
 {
-  "message": "Password reset successfully."
+  "status": "success",
+  "data": {
+    "message": "Password reset successfully"
+  }
 }
 ```
 
-**Error Responses**
-| Status | Message | Trigger |
-|---|---|---|
-| 400 | Validation error message | Invalid or missing fields |
-| 400 | Invalid or expired reset link | Token not found or expired (1hr window) |
-| 500 | Something went wrong | Unexpected server error |
+**Errors:**
+
+| Status | Code                    | Message                                  |
+| ------ | ----------------------- | ---------------------------------------- |
+| 400    | `VALIDATION_ERROR`      | "Reset token is required"                |
+| 400    | `VALIDATION_ERROR`      | "Password must be at least 8 characters" |
+| 400    | `AUTH_EXPIRED_TOKEN`    | "Invalid or expired reset link"          |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"                   |
 
 ---
 
-## Security Notes
+### Resend Verification Email
 
-Forgot password and resend verification endpoints always return 200 regardless of whether the email exists in the system. This is intentional — returning a different response for unknown emails would allow attackers to enumerate registered accounts.
+`POST /api/auth/resend-verification`
 
-Login error messages are intentionally vague — "Invalid email or password" rather than specifying which field is wrong. This prevents attackers from knowing whether an email is registered.
+**Request:**
+
+```json
+{
+  "email": "johndoe@example.com"
+}
+```
+
+**Success — 200:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "message": "If your email is registered and unverified, a new verification link has been sent."
+  }
+}
+```
+
+The response is identical whether or not the email exists. This prevents user enumeration.
+
+**Errors:**
+
+| Status | Code                        | Message                            |
+| ------ | --------------------------- | ---------------------------------- |
+| 400    | `VALIDATION_ERROR`          | "Invalid email address"            |
+| 400    | `AUTH_EMAIL_ALREADY_EXISTS` | "This account is already verified" |
+| 500    | `INTERNAL_SERVER_ERROR`     | "Something went wrong"             |

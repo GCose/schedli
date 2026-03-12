@@ -51,7 +51,16 @@ schedli/
 │   │   └── index.ts             # Re-exports all types
 │   └── utils/
 │       ├── AppError.ts          # Custom error class
+│       ├── errorCodes.ts        # Error type and code constants
 │       └── email.templates.ts   # HTML email templates
+│
+├── types/
+│   ├── error.types.ts           # Frontend error interfaces
+│   └── index.ts                 # Re-exports all types
+│
+├── utils/
+│   ├── api.ts                   # Configured Axios instance
+│   └── error.ts                 # getErrorMessage utility
 │
 └── docs/
     ├── api.md
@@ -96,7 +105,7 @@ Equivalent to controllers in an MVC pattern. Each handler:
 
 Contains all business logic. No Next.js imports. Functions receive plain objects and return plain objects or throw `AppError`.
 
-`auth.service.ts` handles: user registration, login, email verification, password reset, and resend verification.
+`auth.service.ts` handles: user registration, login, token refresh, logout, email verification, password reset, and resend verification.
 
 `email.service.ts` handles: sending transactional emails via the Resend API.
 
@@ -106,13 +115,18 @@ Mongoose schemas with field definitions, types, and validation constraints. No b
 
 ### Middleware (`lib/middleware/`)
 
-`auth.middleware.ts` exposes two utilities: `verifyToken(token)` decodes and validates a JWT, and `getTokenFromCookie(cookieHeader)` extracts the token string from the `Authorization` cookie header. These will be called at the start of route handlers for protected routes.
+`auth.middleware.ts` exposes two utilities:
+
+- `verifyAccessToken(token)` — decodes and validates a JWT access token, throws `AppError` if expired or invalid
+- `extractBearerToken(authorizationHeader)` — extracts the token string from the `Authorization` header, throws `AppError` if missing or malformed
+
+These are called at the start of route handlers for all protected routes.
 
 ---
 
 ## Authentication
 
-Authentication uses manual JWT — no NextAuth. This keeps the auth flow transparent and makes the service layer portable.
+Authentication uses manual JWT with an access token and refresh token pattern — no NextAuth. This keeps the auth flow transparent and makes the service layer portable.
 
 **Registration flow:**
 
@@ -125,8 +139,23 @@ Authentication uses manual JWT — no NextAuth. This keeps the auth flow transpa
 
 1. Email and password are checked against the database
 2. Unverified accounts are rejected with a 403
-3. A JWT is signed and returned as an `httpOnly` cookie
-4. Cookie max age is 30 days if `rememberMe` is true, 7 days otherwise
+3. A short-lived access token (15 minutes) and a long-lived refresh token (30 days) are signed
+4. The refresh token is stored on the user document and set as an `httpOnly` cookie
+5. The access token is returned in the response body
+
+**Token refresh flow:**
+
+1. The client sends a request to `POST /api/auth/refresh` when the access token expires
+2. The server reads the refresh token from the `httpOnly` cookie
+3. The token is validated and matched against the stored value on the user document
+4. A new access token and a new refresh token are issued (rotation)
+5. The old refresh token is invalidated
+
+**Logout flow:**
+
+1. The access token is verified from the `Authorization` header
+2. The refresh token is cleared from the user document in the database
+3. The `refreshToken` cookie is invalidated
 
 **Password reset flow:**
 
@@ -134,20 +163,30 @@ Authentication uses manual JWT — no NextAuth. This keeps the auth flow transpa
 2. A reset link is emailed to the user
 3. On submission, the token is validated, the password is updated, and the token is cleared
 
-**Token storage:**
-JWTs are stored in `httpOnly` cookies. They are not accessible to JavaScript, which prevents XSS-based token theft.
-
 ---
 
 ## Error Handling
 
-`AppError` is a custom class extending `Error` with a `statusCode` property. Service functions throw `AppError` for expected failures (wrong password, duplicate email, expired token, etc.).
+`AppError` is a custom class extending `Error` with `statusCode`, `type`, and `code` properties. Service functions throw `AppError` for expected failures.
 
 Route handlers catch three error types:
 
-- `ZodError` — returns the first validation issue message with a 400
-- `AppError` — returns the error message with the specified status code
-- Anything else — returns a generic 500
+- `ZodError` — returns a `validation_error` envelope with the first issue message and a 400
+- `AppError` — returns an error envelope with the error's type, code, and message at the specified status code
+- Anything else — returns a generic `server_error` envelope with a 500
+
+All error responses follow the same structure:
+
+```json
+{
+  "status": "error",
+  "error": {
+    "type": "authentication_error",
+    "code": "AUTH_INVALID_CREDENTIALS",
+    "message": "Invalid credentials"
+  }
+}
+```
 
 ---
 
@@ -159,9 +198,9 @@ Route handlers catch three error types:
 
 ## Environment Variables
 
-| Variable         | Purpose                             |
-| ---------------- | ----------------------------------- |
-| `MONGODB_URI`    | MongoDB Atlas connection string     |
-| `JWT_SECRET`     | Secret used to sign and verify JWTs |
-| `RESEND_API_KEY` | Resend API key for sending email    |
-| `APP_URL`        | Base URL used in email links        |
+| Variable         | Purpose                                                       |
+| ---------------- | ------------------------------------------------------------- |
+| `MONGODB_URI`    | MongoDB Atlas connection string                               |
+| `JWT_SECRET`     | Secret used to sign and verify both access and refresh tokens |
+| `RESEND_API_KEY` | Resend API key for sending email                              |
+| `APP_URL`        | Base URL used in email links                                  |
