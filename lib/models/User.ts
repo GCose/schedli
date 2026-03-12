@@ -1,5 +1,5 @@
-import mongoose, { Schema } from "mongoose";
 import { IUser } from "@/lib/types";
+import mongoose, { Schema } from "mongoose";
 
 const UserSchema = new Schema<IUser>(
     {
@@ -48,6 +48,10 @@ const UserSchema = new Schema<IUser>(
         },
         passwordResetExpiry: {
             type: Date,
+            required: false,
+        },
+        refreshToken: {
+            type: String,
             required: false,
         },
     },

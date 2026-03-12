@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
 import { registerUser } from "@/lib/services/auth.service";
+import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 
 const schema = z.object({
     fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -15,11 +16,37 @@ export async function POST(req: NextRequest) {
         await connectDB();
         const body = schema.parse(await req.json());
         await registerUser(body);
-        return NextResponse.json({ message: "Registration successful. Check your email to verify your account." }, { status: 201 });
+
+        return NextResponse.json({
+            status: "success",
+            data: { message: "Registration successful. Check your email to verify your account." },
+        }, { status: 201 });
     } catch (err) {
-        console.error("REGISTER ERROR:", err);
-        if (err instanceof z.ZodError) return NextResponse.json({ message: err.issues[0].message }, { status: 400 });
-        if (err instanceof AppError) return NextResponse.json({ message: err.message }, { status: err.statusCode });
-        return NextResponse.json({ message: "Something went wrong." }, { status: 500 });
+        if (err instanceof z.ZodError) return NextResponse.json({
+            status: "error",
+            error: {
+                type: ErrorType.VALIDATION,
+                code: ErrorCode.VALIDATION_ERROR,
+                message: err.issues[0].message
+            }
+        }, { status: 400 });
+
+        if (err instanceof AppError) return NextResponse.json({
+            status: "error",
+            error: {
+                type: err.type,
+                code: err.code,
+                message: err.message
+            }
+        }, { status: err.statusCode });
+
+        return NextResponse.json({
+            status: "error",
+            error: {
+                type: ErrorType.SERVER,
+                code: ErrorCode.INTERNAL_SERVER_ERROR,
+                message: "Something went wrong"
+            }
+        }, { status: 500 });
     }
 }

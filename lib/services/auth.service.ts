@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { connectDB } from "@/lib/db";
 import User from "@/lib/models/User";
 import { AppError } from "@/lib/utils/AppError";
+import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 import { sendEmail } from "@/lib/services/email.service";
 import {
     verificationEmailTemplate,
@@ -23,19 +24,32 @@ const JWT_SECRET = process.env.JWT_SECRET!;
 const SALT_ROUNDS = 10;
 const TOKEN_EXPIRY_HOURS = 24;
 const RESET_TOKEN_EXPIRY_HOURS = 1;
+const ACCESS_TOKEN_EXPIRY = "15m";
+const REFRESH_TOKEN_EXPIRY = "30d";
 
 function generateToken(): string {
     return crypto.randomBytes(32).toString("hex");
 }
 
-export async function registerUser(
-    input: RegisterInput
-): Promise<AuthResponse> {
+function signAccessToken(payload: JWTPayload): string {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
+}
+
+function signRefreshToken(payload: JWTPayload): string {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
+}
+
+export async function registerUser(input: RegisterInput): Promise<void> {
     await connectDB();
 
     const existingUser = await User.findOne({ email: input.email });
     if (existingUser) {
-        throw new AppError("An account with this email already exists", 409);
+        throw new AppError(
+            "An account with this email already exists",
+            409,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
+        );
     }
 
     const hashedPassword = await bcrypt.hash(input.password, SALT_ROUNDS);
@@ -57,35 +71,38 @@ export async function registerUser(
         subject: "Verify your Schedli account",
         html: verificationEmailTemplate(user.fullName, emailVerificationToken),
     });
-
-    return {
-        user: {
-            id: user._id.toString(),
-            fullName: user.fullName,
-            email: user.email,
-            role: user.role,
-            isEmailVerified: user.isEmailVerified,
-        },
-    };
 }
 
-export async function loginUser(
-    input: LoginInput
-): Promise<{ token: string; user: AuthResponse["user"] }> {
+export async function loginUser(input: LoginInput): Promise<AuthResponse> {
     await connectDB();
 
     const user = await User.findOne({ email: input.email });
     if (!user) {
-        throw new AppError("Invalid email or password", 401);
+        throw new AppError(
+            "Invalid credentials",
+            401,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_INVALID_CREDENTIALS
+        );
     }
 
     const isPasswordValid = await bcrypt.compare(input.password, user.password);
     if (!isPasswordValid) {
-        throw new AppError("Invalid email or password", 401);
+        throw new AppError(
+            "Invalid credentials",
+            401,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_INVALID_CREDENTIALS
+        );
     }
 
     if (!user.isEmailVerified) {
-        throw new AppError("Your account is yet to be verified.", 403);
+        throw new AppError(
+            "Your account is yet to be verified.",
+            403,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EMAIL_NOT_VERIFIED
+        );
     }
 
     const payload: JWTPayload = {
@@ -93,11 +110,15 @@ export async function loginUser(
         role: user.role,
     };
 
-    const expiresIn = input.rememberMe ? "30d" : "7d";
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn });
+    const accessToken = signAccessToken(payload);
+    const refreshToken = signRefreshToken(payload);
+
+    user.refreshToken = refreshToken;
+    await user.save();
 
     return {
-        token,
+        accessToken,
+        refreshToken,
         user: {
             id: user._id.toString(),
             fullName: user.fullName,
@@ -108,9 +129,60 @@ export async function loginUser(
     };
 }
 
-export async function forgotPassword(
-    input: ForgotPasswordInput
-): Promise<void> {
+export async function refreshAccessToken(
+    token: string
+): Promise<{ accessToken: string; refreshToken: string }> {
+    await connectDB();
+
+    let payload: JWTPayload;
+    try {
+        payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    } catch {
+        throw new AppError(
+            "Invalid or expired refresh token.",
+            401,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EXPIRED_TOKEN
+        );
+    }
+
+    const user = await User.findOne({
+        _id: payload.userId,
+        refreshToken: token,
+    });
+
+    if (!user) {
+        throw new AppError(
+            "Invalid or expired refresh token.",
+            401,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EXPIRED_TOKEN
+        );
+    }
+
+    const newPayload: JWTPayload = {
+        userId: user._id.toString(),
+        role: user.role,
+    };
+
+    const newAccessToken = signAccessToken(newPayload);
+    const newRefreshToken = signRefreshToken(newPayload);
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+    };
+}
+
+export async function logoutUser(userId: string): Promise<void> {
+    await connectDB();
+    await User.findByIdAndUpdate(userId, { refreshToken: undefined });
+}
+
+export async function forgotPassword(input: ForgotPasswordInput): Promise<void> {
     await connectDB();
 
     const user = await User.findOne({ email: input.email });
@@ -132,9 +204,7 @@ export async function forgotPassword(
     });
 }
 
-export async function resetPassword(
-    input: ResetPasswordInput
-): Promise<void> {
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
     await connectDB();
 
     const user = await User.findOne({
@@ -143,7 +213,12 @@ export async function resetPassword(
     });
 
     if (!user) {
-        throw new AppError("Invalid or expired reset link", 400);
+        throw new AppError(
+            "Invalid or expired reset link",
+            400,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EXPIRED_TOKEN
+        );
     }
 
     user.password = await bcrypt.hash(input.password, SALT_ROUNDS);
@@ -161,7 +236,12 @@ export async function verifyEmail(input: VerifyEmailInput): Promise<void> {
     });
 
     if (!user) {
-        throw new AppError("Invalid or expired verification link", 400);
+        throw new AppError(
+            "Invalid or expired verification link",
+            400,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EXPIRED_TOKEN
+        );
     }
 
     user.isEmailVerified = true;
@@ -177,7 +257,12 @@ export async function resendVerificationEmail(email: string): Promise<void> {
     if (!user) return;
 
     if (user.isEmailVerified) {
-        throw new AppError("This account is already verified", 400);
+        throw new AppError(
+            "This account is already verified",
+            400,
+            ErrorType.AUTHENTICATION,
+            ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
+        );
     }
 
     const emailVerificationToken = generateToken();
