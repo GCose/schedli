@@ -2,31 +2,75 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/**=================
+ *  BASE TOKENS
+ ==================*/
+@layer base {
+  :root {
+    --primary: #2563eb;
+    --success: #00d820;
+    --danger: #df0030;
+    --background: #ffffff;
+    --background-soft: #f9f9f9;
+    --heading: #212121;
+    --text: #636363;
+    --icon: #8c8c8c;
+    --placeholder: #b0b0b0;
+    --input: #f9f9f9;
+  }
+
+  .dark {
+    --background: #000510;
+    --background-soft: #000510;
+    --heading: #fafafa;
+    --text: #d8d8d8;
+    --icon: #cccccc;
+    --placeholder: #b0b0b0;
+    --input: #ffffff1a;
+  }
+
+  *,
+  *::before,
+  *::after {
+    font-family: inherit;
+  }
+
+  h1 {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+
+  h2 {
+    font-size: clamp(1.25rem, 3.5vw, 1.5rem);
+  }
+
+  h3 {
+    font-size: clamp(1.1rem, 2.5vw, 1.25rem);
+  }
+}
+
+/**=================
+ *  FONT SIZES
+ ==================*/
 @theme {
   --font-sans: var(--font-dm-sans);
-
-  --font-size-heading: 2rem;
+  --font-size-title: 2rem;
   --font-size-subheading: 1.5rem;
   --font-size-body: 1rem;
   --font-size-small: 0.875rem;
-
-  --color-primary: #2563eb;
-  --color-background: #ffffff;
-  --color-background-soft: #f9f9f9;
-  --color-dark-input: #ffffff1a;
-  --color-text: #636363;
-  --color-icon: #8c8c8c;
-  --color-placeholder: #b0b0b0;
-
-  --color-dark-background: #000510;
-  --color-dark-text: #d8d8d8;
-  --color-dark-heading: #fafafa;
-  --color-dark-icon: #cccccc;
 }
 
-@media (prefers-color-scheme: dark) {
-  html:not(.light) {
-    background-color: #000510;
-    color: #d8d8d8;
-  }
+/**=================
+ *  THEME MAPPING
+ ==================*/
+@theme inline {
+  --color-primary: var(--primary);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-background: var(--background);
+  --color-background-soft: var(--background-soft);
+  --color-heading: var(--heading);
+  --color-text: var(--text);
+  --color-icon: var(--icon);
+  --color-placeholder: var(--placeholder);
+  --color-input: var(--input);
 }
