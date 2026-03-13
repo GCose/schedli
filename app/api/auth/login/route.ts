@@ -24,18 +24,18 @@ export async function POST(req: NextRequest) {
 
         const isProduction = process.env.NODE_ENV === "production";
 
-        response.cookies.set("accessToken", accessToken, {
+        response.cookies.set("access_token", accessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: "lax",
+            sameSite: "strict",
             maxAge: 60 * 15,
             path: "/",
         });
 
-        response.cookies.set("refreshToken", refreshToken, {
+        response.cookies.set("refresh_token", refreshToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: "lax",
+            sameSite: "strict",
             maxAge: 60 * 60 * 24 * 30,
             path: "/",
         });
