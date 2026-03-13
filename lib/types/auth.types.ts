@@ -28,7 +28,9 @@ export interface JWTPayload {
     role: "personal" | "enterprise";
 }
 
-export interface AuthResponse {
+export interface LoginServiceResult {
+    accessToken: string;
+    refreshToken: string;
     user: {
         id: string;
         fullName: string;
@@ -36,6 +38,4 @@ export interface AuthResponse {
         role: "personal" | "enterprise";
         isEmailVerified: boolean;
     };
-    accessToken: string;
-    refreshToken: string;
 }

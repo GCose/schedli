@@ -4,11 +4,11 @@ import type { JWTPayload } from "@/lib/types";
 import { AppError } from "@/lib/utils/AppError";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!;
 
 export function verifyAccessToken(token: string): JWTPayload {
     try {
-        return jwt.verify(token, JWT_SECRET) as JWTPayload;
+        return jwt.verify(token, JWT_ACCESS_SECRET) as JWTPayload;
     } catch (err: unknown) {
         const isExpired = err instanceof jwt.TokenExpiredError;
         throw new AppError(
