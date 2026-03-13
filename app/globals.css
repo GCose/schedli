@@ -35,6 +35,16 @@
     font-family: inherit;
   }
 
+  ::-webkit-scrollbar {
+    width: 0.5rem;
+    background: inherit;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border-radius: 100px;
+    background-color: var(--primary);
+  }
+
   h1 {
     font-size: clamp(1.5rem, 5vw, 2rem);
   }

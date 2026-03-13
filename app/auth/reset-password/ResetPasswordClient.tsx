@@ -82,12 +82,12 @@ export default function ResetPasswordClient() {
           type={showPassword ? "text" : "password"}
           onChange={(e) => setPassword(e.target.value)}
           rightElement={
-            <Button
-              variant="ghost"
+            <button
+              type="button"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </Button>
+            </button>
           }
         />
         {/*==================== End of Password ====================*/}
