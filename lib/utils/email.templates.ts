@@ -76,7 +76,7 @@ export function verificationEmailTemplate(
   return emailWrapper(`
     ${heading(`Welcome to Schedli, ${fullName}!`)}
     ${paragraph("To complete your account setup, verify your email address. This link expires in 24 hours.")}
-    ${button("Verify Email", `${BASE_URL}/verify-email?token=${token}`)}
+    ${button("Verify Email", `${BASE_URL}/auth/verify-email?token=${token}`)}
     ${smallText("If you didn't create an account, you can safely ignore this email.")}
   `);
 }
