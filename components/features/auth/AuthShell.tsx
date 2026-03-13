@@ -6,9 +6,7 @@ import { LayoutGroup, motion } from "framer-motion";
 
 export default function AuthShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const imageOnRight = ["/auth/sign-in", "/auth/reset-password"].includes(
-    pathname,
-  );
+  const imageOnRight = ["/auth/sign-in"].includes(pathname);
 
   return (
     <LayoutGroup>
