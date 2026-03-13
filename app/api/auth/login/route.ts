@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
             httpOnly: true,
             secure: isProduction,
             sameSite: "strict",
-            maxAge: 60 * 15,
+            ...(body.rememberMe && { maxAge: 60 * 15 }),
             path: "/",
         });
 

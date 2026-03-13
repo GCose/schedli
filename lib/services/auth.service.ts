@@ -1,26 +1,27 @@
+import type {
+    LoginInput,
+    JWTPayload,
+    RegisterInput,
+    VerifyEmailInput,
+    LoginServiceResult,
+    ResetPasswordInput,
+    ForgotPasswordInput,
+} from "@/lib/types";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
+import {
+    verificationEmailTemplate,
+    passwordResetEmailTemplate,
+} from "@/lib/utils/email.templates";
 import { connectDB } from "@/lib/db";
 import User from "@/lib/models/User";
 import { AppError } from "@/lib/utils/AppError";
 import { sendEmail } from "@/lib/services/email.service";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
-import {
-    verificationEmailTemplate,
-    passwordResetEmailTemplate,
-} from "@/lib/utils/email.templates";
-import type {
-    RegisterInput,
-    LoginInput,
-    JWTPayload,
-    AuthResponse,
-    VerifyEmailInput,
-    ResetPasswordInput,
-    ForgotPasswordInput,
-} from "@/lib/types";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET!;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
 const SALT_ROUNDS = 10;
 const TOKEN_EXPIRY_HOURS = 24;
 const RESET_TOKEN_EXPIRY_HOURS = 1;
@@ -32,11 +33,11 @@ function generateToken(): string {
 }
 
 function signAccessToken(payload: JWTPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
+    return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
 }
 
 function signRefreshToken(payload: JWTPayload): string {
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
+    return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
 }
 
 export async function registerUser(input: RegisterInput): Promise<void> {
@@ -73,7 +74,7 @@ export async function registerUser(input: RegisterInput): Promise<void> {
     });
 }
 
-export async function loginUser(input: LoginInput): Promise<AuthResponse> {
+export async function loginUser(input: LoginInput): Promise<LoginServiceResult> {
     await connectDB();
 
     const user = await User.findOne({ email: input.email });
@@ -136,7 +137,7 @@ export async function refreshAccessToken(
 
     let payload: JWTPayload;
     try {
-        payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+        payload = jwt.verify(token, JWT_REFRESH_SECRET) as JWTPayload;
     } catch {
         throw new AppError(
             "Invalid or expired refresh token.",
