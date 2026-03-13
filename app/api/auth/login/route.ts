@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
-import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
-import { NextRequest, NextResponse } from "next/server";
 import { loginUser } from "@/lib/services/auth.service";
+import { NextRequest, NextResponse } from "next/server";
+import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 
 const schema = z.object({
     email: z.email("Invalid email address"),
@@ -15,16 +15,26 @@ export async function POST(req: NextRequest) {
     try {
         await connectDB();
         const body = schema.parse(await req.json());
-        const { accessToken, user, refreshToken } = await loginUser(body);
+        const { accessToken, refreshToken, user } = await loginUser(body);
 
         const response = NextResponse.json({
             status: "success",
-            data: { accessToken, user },
+            data: { user },
         }, { status: 200 });
+
+        const isProduction = process.env.NODE_ENV === "production";
+
+        response.cookies.set("accessToken", accessToken, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: "lax",
+            maxAge: 60 * 15,
+            path: "/",
+        });
 
         response.cookies.set("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: isProduction,
             sameSite: "lax",
             maxAge: 60 * 60 * 24 * 30,
             path: "/",
@@ -36,8 +46,9 @@ export async function POST(req: NextRequest) {
             status: "error",
             error: {
                 type: ErrorType.VALIDATION,
-                code: ErrorCode.VALIDATION_ERROR, message: err.issues[0].message
-            }
+                code: ErrorCode.VALIDATION_ERROR,
+                message: err.issues[0].message,
+            },
         }, { status: 400 });
 
         if (err instanceof AppError) return NextResponse.json({
@@ -45,8 +56,8 @@ export async function POST(req: NextRequest) {
             error: {
                 type: err.type,
                 code: err.code,
-                message: err.message
-            }
+                message: err.message,
+            },
         }, { status: err.statusCode });
 
         return NextResponse.json({
@@ -54,8 +65,8 @@ export async function POST(req: NextRequest) {
             error: {
                 type: ErrorType.SERVER,
                 code: ErrorCode.INTERNAL_SERVER_ERROR,
-                message: "Something went wrong"
-            }
+                message: "Something went wrong",
+            },
         }, { status: 500 });
     }
 }

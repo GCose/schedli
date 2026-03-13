@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { NextRequest } from "next/server";
 import type { JWTPayload } from "@/lib/types";
 import { AppError } from "@/lib/utils/AppError";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
@@ -19,8 +20,9 @@ export function verifyAccessToken(token: string): JWTPayload {
     }
 }
 
-export function extractBearerToken(authorizationHeader: string | null): string {
-    if (!authorizationHeader || !authorizationHeader.startsWith("Bearer ")) {
+export function extractCookieToken(req: NextRequest): string {
+    const token = req.cookies.get("access_token")?.value;
+    if (!token) {
         throw new AppError(
             "Authorization token is missing.",
             401,
@@ -28,5 +30,5 @@ export function extractBearerToken(authorizationHeader: string | null): string {
             ErrorCode.AUTH_UNAUTHORIZED
         );
     }
-    return authorizationHeader.replace("Bearer ", "");
+    return token;
 }

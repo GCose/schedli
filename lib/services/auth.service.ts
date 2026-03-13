@@ -4,8 +4,8 @@ import crypto from "crypto";
 import { connectDB } from "@/lib/db";
 import User from "@/lib/models/User";
 import { AppError } from "@/lib/utils/AppError";
-import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 import { sendEmail } from "@/lib/services/email.service";
+import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 import {
     verificationEmailTemplate,
     passwordResetEmailTemplate,
@@ -13,11 +13,11 @@ import {
 import type {
     RegisterInput,
     LoginInput,
-    ForgotPasswordInput,
-    ResetPasswordInput,
-    VerifyEmailInput,
     JWTPayload,
     AuthResponse,
+    VerifyEmailInput,
+    ResetPasswordInput,
+    ForgotPasswordInput,
 } from "@/lib/types";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
