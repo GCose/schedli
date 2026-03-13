@@ -28,39 +28,84 @@ The core architectural principle is framework isolation. Business logic lives in
 ```
 schedli/
 ├── app/
-│   ├── (auth)/                  # Auth pages (sign-in, sign-up, etc.)
-│   ├── (dashboard)/             # Dashboard pages (protected)
+│   ├── auth/
+│   │   ├── sign-up/
+│   │   │   ├── page.tsx
+│   │   │   └── SignUpClient.tsx
+│   │   ├── sign-in/
+│   │   │   ├── page.tsx
+│   │   │   └── SignInClient.tsx
+│   │   ├── verify-email/
+│   │   │   ├── page.tsx
+│   │   │   └── VerifyEmailClient.tsx
+│   │   ├── resend-verification/
+│   │   │   ├── page.tsx
+│   │   │   └── ResendVerificationClient.tsx
+│   │   ├── forgot-password/
+│   │   │   ├── page.tsx
+│   │   │   └── ForgotPasswordClient.tsx
+│   │   ├── reset-password/
+│   │   │   ├── page.tsx
+│   │   │   └── ResetPasswordClient.tsx
+│   │   ├── layout.tsx
+│   │   └── page.tsx                        # Redirects to /auth/sign-in
+│   ├── (dashboard)/
+│   │   ├── dashboard/
+│   │   │   ├── page.tsx
+│   │   │   └── DashboardClient.tsx
+│   │   └── layout.tsx
 │   ├── api/
-│   │   └── auth/                # Auth route handlers
+│   │   └── auth/
+│   │       ├── register/route.ts
+│   │       ├── login/route.ts
+│   │       ├── logout/route.ts
+│   │       ├── refresh/route.ts
+│   │       ├── verify-email/route.ts
+│   │       ├── resend-verification/route.ts
+│   │       ├── forgot-password/route.ts
+│   │       └── reset-password/route.ts
 │   ├── globals.css
+│   ├── icon.png
 │   └── layout.tsx
 │
+├── components/
+│   ├── ui/
+│   │   ├── Button.tsx
+│   │   ├── Input.tsx
+│   │   └── Checkbox.tsx
+│   └── features/
+│       └── auth/
+│           └── AuthShell.tsx
+│
 ├── lib/
-│   ├── db.ts                    # MongoDB connection
+│   ├── db.ts                               # MongoDB connection
 │   ├── middleware/
-│   │   └── auth.middleware.ts   # JWT verification utilities
+│   │   └── auth.middleware.ts              # JWT verification utilities
 │   ├── models/
-│   │   └── User.ts              # Mongoose user schema
+│   │   └── User.ts                         # Mongoose user schema
 │   ├── services/
-│   │   ├── auth.service.ts      # Auth business logic
-│   │   └── email.service.ts     # Email sending logic
+│   │   ├── auth.service.ts                 # Auth business logic
+│   │   └── email.service.ts                # Email sending logic
 │   ├── types/
 │   │   ├── auth.types.ts
 │   │   ├── user.types.ts
 │   │   ├── email.types.ts
-│   │   └── index.ts             # Re-exports all types
+│   │   ├── organization.types.ts
+│   │   └── index.ts                        # Re-exports all lib types
 │   └── utils/
-│       ├── AppError.ts          # Custom error class
-│       ├── errorCodes.ts        # Error type and code constants
-│       └── email.templates.ts   # HTML email templates
+│       ├── AppError.ts                     # Custom error class
+│       ├── errorCodes.ts                   # Error type and code constants
+│       └── email.templates.ts              # HTML email templates
 │
 ├── types/
-│   ├── error.types.ts           # Frontend error interfaces
-│   └── index.ts                 # Re-exports all types
+│   ├── ui.types.ts                         # UI component prop types
+│   ├── auth.types.ts                       # Frontend auth types
+│   ├── error.types.ts                      # Frontend error interfaces
+│   └── index.ts                            # Re-exports all frontend types
 │
 ├── utils/
-│   ├── api.ts                   # Configured Axios instance
-│   └── error.ts                 # getErrorMessage utility
+│   ├── api.ts                              # Configured Axios instance
+│   └── error.ts                            # getErrorMessage utility
 │
 └── docs/
     ├── api.md
@@ -118,7 +163,7 @@ Mongoose schemas with field definitions, types, and validation constraints. No b
 `auth.middleware.ts` exposes two utilities:
 
 - `verifyAccessToken(token)` — decodes and validates a JWT access token, throws `AppError` if expired or invalid
-- `extractBearerToken(authorizationHeader)` — extracts the token string from the `Authorization` header, throws `AppError` if missing or malformed
+- `extractCookieToken(req)` — reads the `accessToken` httpOnly cookie from the request, throws `AppError` if missing
 
 These are called at the start of route handlers for all protected routes.
 
@@ -140,8 +185,9 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 1. Email and password are checked against the database
 2. Unverified accounts are rejected with a 403
 3. A short-lived access token (15 minutes) and a long-lived refresh token (30 days) are signed
-4. The refresh token is stored on the user document and set as an `httpOnly` cookie
-5. The access token is returned in the response body
+4. The refresh token is stored on the user document
+5. Both tokens are set as `httpOnly` cookies — the access token is never returned in the response body
+6. Only the user object is returned in the response
 
 **Token refresh flow:**
 
@@ -153,9 +199,9 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 
 **Logout flow:**
 
-1. The access token is verified from the `Authorization` header
+1. The access token is read from the `accessToken` httpOnly cookie
 2. The refresh token is cleared from the user document in the database
-3. The `refreshToken` cookie is invalidated
+3. Both the `accessToken` and `refreshToken` cookies are invalidated
 
 **Password reset flow:**
 

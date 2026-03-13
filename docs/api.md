@@ -6,11 +6,7 @@ Base URL: `http://localhost:3000` (development), `https://schedli.vercel.app` (p
 
 All requests must include `Content-Type: application/json`.
 
-Protected routes require an `Authorization` header:
-
-```
-Authorization: Bearer <accessToken>
-```
+Protected routes are authenticated via the `accessToken` httpOnly cookie, which is sent automatically by the browser on every request.
 
 ## Response Structure
 
@@ -51,12 +47,12 @@ Every response follows a consistent envelope.
 
 ## Token Strategy
 
-Authentication uses two tokens:
+Authentication uses two tokens, both stored as httpOnly cookies — never exposed to client-side JavaScript:
 
-- **Access token** — short-lived (15 minutes), returned in the response body, sent as a Bearer token on every protected request
+- **Access token** — short-lived (15 minutes), stored in an `httpOnly` cookie named `accessToken`, sent automatically by the browser on every request to the same domain
 - **Refresh token** — long-lived (30 days), stored in an `httpOnly` cookie named `refreshToken`, used only to obtain a new access token when it expires
 
-When the access token expires, the client calls `POST /api/auth/refresh` silently. The server validates the refresh token, invalidates it, and issues a new access token and a new refresh token (rotation). If the refresh token is also expired or invalid, the user must log in again.
+When the access token expires, the client calls `POST /api/auth/refresh` silently. The server reads the refresh token cookie, validates it, invalidates the old one, and issues a new access token and refresh token (rotation). If the refresh token is also expired or invalid, the user must log in again.
 
 ---
 
@@ -118,7 +114,6 @@ When the access token expires, the client calls `POST /api/auth/refresh` silentl
 {
   "status": "success",
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "user": {
       "id": "64f1a2b3c4d5e6f7a8b9c0d1",
       "fullName": "John Doe",
@@ -130,7 +125,7 @@ When the access token expires, the client calls `POST /api/auth/refresh` silentl
 }
 ```
 
-The refresh token is returned as an `httpOnly` cookie named `refreshToken` with a 30-day max age. The access token expires in 15 minutes.
+Both the `accessToken` (15-minute max age) and `refreshToken` (30-day max age) are set as `httpOnly` cookies. The access token is never returned in the response body.
 
 **Errors:**
 
@@ -148,7 +143,7 @@ The refresh token is returned as an `httpOnly` cookie named `refreshToken` with 
 
 `POST /api/auth/logout`
 
-Requires `Authorization: Bearer <accessToken>` header. No request body required.
+No request body required. The `accessToken` cookie is read automatically.
 
 **Success — 200:**
 
@@ -161,7 +156,7 @@ Requires `Authorization: Bearer <accessToken>` header. No request body required.
 }
 ```
 
-The refresh token is cleared from the database and the `refreshToken` cookie is invalidated.
+The refresh token is cleared from the database and both the `accessToken` and `refreshToken` cookies are invalidated.
 
 **Errors:**
 

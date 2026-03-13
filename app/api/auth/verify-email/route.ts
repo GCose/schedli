@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
-import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyEmail } from "@/lib/services/auth.service";
+import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 
 const schema = z.object({
     token: z.string().min(1, "Verification token is required"),

@@ -17,11 +17,11 @@ const emailWrapper = (content: string) => `
           <tr>
             <td align="center" style="padding:40px 40px 32px;">
               <img
-                src="https://res.cloudinary.com/ddmdjtgbz/image/upload/v1773243977/Schedli___Icon_uapyb4.png"
-                alt="Schedli"
-                width="120"
-                height="auto"
-                style="display:block;"
+              width="120"
+              height="auto"
+              alt="Schedli | Icon"
+              style="display:block;"
+              src="https://res.cloudinary.com/ddmdjtgbz/image/upload/v1773243977/Schedli___Icon_uapyb4.png"
               />
             </td>
           </tr>
@@ -88,7 +88,7 @@ export function passwordResetEmailTemplate(
   return emailWrapper(`
     ${heading("Reset your password")}
     ${paragraph(`Hi ${fullName}, we received a request to reset your Schedli password. This link expires in 1 hour.`)}
-    ${button("Reset Password", `${BASE_URL}/reset-password?token=${token}`)}
+    ${button("Reset Password", `${BASE_URL}/auth/reset-password?token=${token}`)}
     ${smallText("If you didn't request this, you can safely ignore this email.")}
   `);
 }
