@@ -1,13 +1,14 @@
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
+import { emailSchema } from "@/lib/utils/validation";
 import { loginUser } from "@/lib/services/auth.service";
 import { NextRequest, NextResponse } from "next/server";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 
 const schema = z.object({
-    email: z.email("Invalid email address"),
-    password: z.string().min(1, "Password is required"),
+    email: emailSchema,
+    password: z.string().min(1, "Password is required").max(72, "Password must be at most 72 characters"),
     rememberMe: z.boolean().optional(),
 });
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     try {
         await connectDB();
         const body = schema.parse(await req.json());
-        const { accessToken, refreshToken, user } = await loginUser(body);
+        const { accessToken, refreshToken, rememberMe, user } = await loginUser(body);
 
         const response = NextResponse.json({
             status: "success",
@@ -24,19 +25,19 @@ export async function POST(req: NextRequest) {
 
         const isProduction = process.env.NODE_ENV === "production";
 
-        response.cookies.set("access_token", accessToken, {
+        response.cookies.set("schedli_sid", accessToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: "strict",
-            ...(body.rememberMe && { maxAge: 60 * 15 }),
+            ...(rememberMe && { maxAge: 60 * 15 }),
             path: "/",
         });
 
-        response.cookies.set("refresh_token", refreshToken, {
+        response.cookies.set("schedli_rt", refreshToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: "strict",
-            maxAge: 60 * 60 * 24 * 30,
+            ...(rememberMe && { maxAge: 60 * 60 * 24 * 30 }),
             path: "/",
         });
 

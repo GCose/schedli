@@ -21,7 +21,7 @@ export function verifyAccessToken(token: string): JWTPayload {
 }
 
 export function extractCookieToken(req: NextRequest): string {
-    const token = req.cookies.get("access_token")?.value;
+    const token = req.cookies.get("schedli_sid")?.value;
     if (!token) {
         throw new AppError(
             "Authorization token is missing.",

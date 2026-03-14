@@ -163,7 +163,7 @@ Mongoose schemas with field definitions, types, and validation constraints. No b
 `auth.middleware.ts` exposes two utilities:
 
 - `verifyAccessToken(token)` — decodes and validates a JWT access token using `JWT_ACCESS_SECRET`, throws `AppError` if expired or invalid
-- `extractCookieToken(req)` — reads the `access_token` httpOnly cookie from the request, throws `AppError` if missing
+- `extractCookieToken(req)` — reads the `schedli_sid` httpOnly cookie from the request, throws `AppError` if missing
 
 These are called at the start of route handlers for all protected routes.
 
@@ -187,13 +187,13 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 3. A short-lived access token (15 minutes) and a long-lived refresh token (30 days) are signed using separate secrets
 4. The refresh token is stored on the user document
 5. Both tokens are set as `httpOnly` cookies — the access token is never returned in the response body
-6. If `rememberMe` is false, the `access_token` cookie has no `maxAge` and expires when the browser closes
+6. If `rememberMe` is false, the `schedli_sid` cookie has no `maxAge` and expires when the browser closes
 7. Only the user object is returned in the response
 
 **Token refresh flow:**
 
 1. The Axios interceptor in `utils/api.ts` catches any 401 response and silently calls `POST /api/auth/refresh`
-2. The server reads the `refresh_token` httpOnly cookie
+2. The server reads the `schedli_rt` httpOnly cookie
 3. The token is validated against `JWT_REFRESH_SECRET` and matched against the stored value on the user document
 4. A new access token and a new refresh token are issued (rotation)
 5. Both are set as httpOnly cookies — the old refresh token is invalidated
@@ -202,9 +202,9 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 
 **Logout flow:**
 
-1. The access token is read from the `access_token` httpOnly cookie
+1. The access token is read from the `schedli_sid` httpOnly cookie
 2. The refresh token is cleared from the user document in the database
-3. Both the `access_token` and `refresh_token` cookies are invalidated
+3. Both the `schedli_sid` and `schedli_rt` cookies are invalidated
 
 **Password reset flow:**
 

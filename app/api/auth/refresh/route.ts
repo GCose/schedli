@@ -9,7 +9,7 @@ const isProduction = process.env.NODE_ENV === "production";
 export async function POST(req: NextRequest) {
     try {
         await connectDB();
-        const token = req.cookies.get("refresh_token")?.value;
+        const token = req.cookies.get("schedli_rt")?.value;
 
         if (!token) {
             throw new AppError(
@@ -20,36 +20,37 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { accessToken, refreshToken } = await refreshAccessToken(token);
+        const { accessToken, refreshToken, rememberMe } = await refreshAccessToken(token);
 
         const response = NextResponse.json({
             status: "success",
         }, { status: 200 });
 
-        response.cookies.set("access_token", accessToken, {
+        response.cookies.set("schedli_sid", accessToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: "strict",
-            maxAge: 60 * 15,
+            ...(rememberMe && { maxAge: 60 * 15 }),
             path: "/",
         });
 
-        response.cookies.set("refresh_token", refreshToken, {
+        response.cookies.set("schedli_rt", refreshToken, {
             httpOnly: true,
             secure: isProduction,
             sameSite: "strict",
-            maxAge: 60 * 60 * 24 * 30,
+            ...(rememberMe && { maxAge: 60 * 60 * 24 * 30 }),
             path: "/",
         });
 
         return response;
     } catch (err) {
         if (err instanceof AppError) return NextResponse.json({
-            status: "error", error: {
+            status: "error",
+            error: {
                 type: err.type,
                 code: err.code,
-                message: err.message
-            }
+                message: err.message,
+            },
         }, { status: err.statusCode });
 
         return NextResponse.json({
@@ -57,8 +58,8 @@ export async function POST(req: NextRequest) {
             error: {
                 type: ErrorType.SERVER,
                 code: ErrorCode.INTERNAL_SERVER_ERROR,
-                message: "Something went wrong"
-            }
+                message: "Something went wrong",
+            },
         }, { status: 500 });
     }
 }

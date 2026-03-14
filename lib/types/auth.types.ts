@@ -28,9 +28,14 @@ export interface JWTPayload {
     role: "personal" | "enterprise";
 }
 
+export interface RefreshTokenPayload extends JWTPayload {
+    rememberMe: boolean;
+}
+
 export interface LoginServiceResult {
     accessToken: string;
     refreshToken: string;
+    rememberMe: boolean;
     user: {
         id: string;
         fullName: string;
