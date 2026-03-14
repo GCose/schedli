@@ -17,8 +17,8 @@ export async function POST(req: NextRequest) {
             data: { message: "Logged out successfully" },
         }, { status: 200 });
 
-        response.cookies.set("access_token", "", { httpOnly: true, maxAge: 0, path: "/" });
-        response.cookies.set("refresh_token", "", { httpOnly: true, maxAge: 0, path: "/" });
+        response.cookies.set("schedli_sid", "", { httpOnly: true, maxAge: 0, path: "/" });
+        response.cookies.set("schedli_rt", "", { httpOnly: true, maxAge: 0, path: "/" });
 
         return response;
     } catch (err) {

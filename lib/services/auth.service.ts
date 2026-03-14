@@ -6,6 +6,7 @@ import type {
     LoginServiceResult,
     ResetPasswordInput,
     ForgotPasswordInput,
+    RefreshTokenPayload,
 } from "@/lib/types";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
@@ -36,7 +37,7 @@ function signAccessToken(payload: JWTPayload): string {
     return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
 }
 
-function signRefreshToken(payload: JWTPayload): string {
+function signRefreshToken(payload: RefreshTokenPayload): string {
     return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
 }
 
@@ -106,13 +107,20 @@ export async function loginUser(input: LoginInput): Promise<LoginServiceResult> 
         );
     }
 
-    const payload: JWTPayload = {
+    const rememberMe = input.rememberMe ?? false;
+
+    const accessPayload: JWTPayload = {
         userId: user._id.toString(),
         role: user.role,
     };
 
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
+    const refreshPayload: RefreshTokenPayload = {
+        ...accessPayload,
+        rememberMe,
+    };
+
+    const accessToken = signAccessToken(accessPayload);
+    const refreshToken = signRefreshToken(refreshPayload);
 
     user.refreshToken = refreshToken;
     await user.save();
@@ -120,6 +128,7 @@ export async function loginUser(input: LoginInput): Promise<LoginServiceResult> 
     return {
         accessToken,
         refreshToken,
+        rememberMe,
         user: {
             id: user._id.toString(),
             fullName: user.fullName,
@@ -132,12 +141,12 @@ export async function loginUser(input: LoginInput): Promise<LoginServiceResult> 
 
 export async function refreshAccessToken(
     token: string
-): Promise<{ accessToken: string; refreshToken: string }> {
+): Promise<{ accessToken: string; refreshToken: string; rememberMe: boolean }> {
     await connectDB();
 
-    let payload: JWTPayload;
+    let payload: RefreshTokenPayload;
     try {
-        payload = jwt.verify(token, JWT_REFRESH_SECRET) as JWTPayload;
+        payload = jwt.verify(token, JWT_REFRESH_SECRET) as RefreshTokenPayload;
     } catch {
         throw new AppError(
             "Invalid or expired refresh token.",
@@ -161,13 +170,20 @@ export async function refreshAccessToken(
         );
     }
 
-    const newPayload: JWTPayload = {
+    const rememberMe = payload.rememberMe ?? false;
+
+    const newAccessPayload: JWTPayload = {
         userId: user._id.toString(),
         role: user.role,
     };
 
-    const newAccessToken = signAccessToken(newPayload);
-    const newRefreshToken = signRefreshToken(newPayload);
+    const newRefreshPayload: RefreshTokenPayload = {
+        ...newAccessPayload,
+        rememberMe,
+    };
+
+    const newAccessToken = signAccessToken(newAccessPayload);
+    const newRefreshToken = signRefreshToken(newRefreshPayload);
 
     user.refreshToken = newRefreshToken;
     await user.save();
@@ -175,6 +191,7 @@ export async function refreshAccessToken(
     return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
+        rememberMe,
     };
 }
 
@@ -215,7 +232,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<void> {
 
     if (!user) {
         throw new AppError(
-            "Invalid or expired reset link",
+            "Invalid or expired reset link.",
             400,
             ErrorType.AUTHENTICATION,
             ErrorCode.AUTH_EXPIRED_TOKEN
@@ -225,6 +242,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<void> {
     user.password = await bcrypt.hash(input.password, SALT_ROUNDS);
     user.passwordResetToken = undefined;
     user.passwordResetExpiry = undefined;
+    user.refreshToken = undefined;
     await user.save();
 }
 
@@ -256,15 +274,7 @@ export async function resendVerificationEmail(email: string): Promise<void> {
 
     const user = await User.findOne({ email });
     if (!user) return;
-
-    if (user.isEmailVerified) {
-        throw new AppError(
-            "This account is already verified",
-            400,
-            ErrorType.AUTHENTICATION,
-            ErrorCode.AUTH_EMAIL_ALREADY_EXISTS
-        );
-    }
+    if (user.isEmailVerified) return;
 
     const emailVerificationToken = generateToken();
     const emailVerificationExpiry = new Date(

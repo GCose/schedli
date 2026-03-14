@@ -6,7 +6,7 @@ Base URL: `http://localhost:3000` (development), `https://schedli.vercel.app` (p
 
 All requests must include `Content-Type: application/json`.
 
-Protected routes are authenticated via the `access_token` httpOnly cookie, which is sent automatically by the browser on every request.
+Protected routes are authenticated via the `schedli_sid` httpOnly cookie, which is sent automatically by the browser on every request.
 
 ## Response Structure
 
@@ -49,10 +49,10 @@ Every response follows a consistent envelope.
 
 Authentication uses two tokens, both stored as httpOnly cookies — never exposed to client-side JavaScript:
 
-- **Access token** — short-lived (15 minutes), stored in an `httpOnly` cookie named `access_token`, signed with `JWT_ACCESS_SECRET`, sent automatically by the browser on every request to the same domain
-- **Refresh token** — long-lived (30 days), stored in an `httpOnly` cookie named `refresh_token`, signed with `JWT_REFRESH_SECRET`, used only to obtain a new access token when it expires
+- **Access token** — short-lived (15 minutes), stored in an `httpOnly` cookie named `schedli_sid`, signed with `JWT_ACCESS_SECRET`, sent automatically by the browser on every request to the same domain
+- **Refresh token** — long-lived (30 days), stored in an `httpOnly` cookie named `schedli_rt`, signed with `JWT_REFRESH_SECRET`, used only to obtain a new access token when it expires
 
-When the access token expires, the Axios interceptor in `utils/api.ts` silently calls `POST /api/auth/refresh`. The server reads the `refresh_token` cookie, validates it, invalidates the old one, and issues a new access token and refresh token (rotation). If the refresh token is also expired or invalid, the user is redirected to `/auth/sign-in`.
+When the access token expires, the Axios interceptor in `utils/api.ts` silently calls `POST /api/auth/refresh`. The server reads the `schedli_rt` cookie, validates it, invalidates the old one, and issues a new access token and refresh token (rotation). If the refresh token is also expired or invalid, the user is redirected to `/auth/sign-in`.
 
 ---
 
@@ -126,7 +126,7 @@ When the access token expires, the Axios interceptor in `utils/api.ts` silently 
 }
 ```
 
-Both the `access_token` and `refresh_token` are set as `httpOnly` cookies. The `refresh_token` always has a 30-day `maxAge`. The `access_token` only has a `maxAge` (15 minutes) if `rememberMe` is true — otherwise it is a session cookie that expires when the browser closes.
+Both the `schedli_sid` and `schedli_rt` are set as `httpOnly` cookies. The `schedli_rt` always has a 30-day `maxAge`. The `schedli_sid` only has a `maxAge` (15 minutes) if `rememberMe` is true — otherwise it is a session cookie that expires when the browser closes.
 
 **Errors:**
 
@@ -144,7 +144,7 @@ Both the `access_token` and `refresh_token` are set as `httpOnly` cookies. The `
 
 `POST /api/auth/logout`
 
-No request body required. The `access_token` cookie is read automatically.
+No request body required. The `schedli_sid` cookie is read automatically.
 
 **Success — 200:**
 
@@ -157,7 +157,7 @@ No request body required. The `access_token` cookie is read automatically.
 }
 ```
 
-The refresh token is cleared from the database and both the `access_token` and `refresh_token` cookies are invalidated.
+The refresh token is cleared from the database and both the `schedli_sid` and `schedli_rt` cookies are invalidated.
 
 **Errors:**
 
@@ -174,7 +174,7 @@ The refresh token is cleared from the database and both the `access_token` and `
 
 `POST /api/auth/refresh`
 
-No request body required. The `refresh_token` cookie is read automatically.
+No request body required. The `schedli_rt` cookie is read automatically.
 
 **Success — 200:**
 
@@ -184,7 +184,7 @@ No request body required. The `refresh_token` cookie is read automatically.
 }
 ```
 
-A new `access_token` and `refresh_token` are issued and set as `httpOnly` cookies, replacing the old ones (rotation). Neither token is returned in the response body.
+A new `schedli_sid` and `schedli_rt` are issued and set as `httpOnly` cookies, replacing the old ones (rotation). Neither token is returned in the response body.
 
 **Errors:**
 

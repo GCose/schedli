@@ -2,12 +2,13 @@ import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
+import { passwordSchema } from "@/lib/utils/validation";
 import { resetPassword } from "@/lib/services/auth.service";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
 
 const schema = z.object({
     token: z.string().min(1, "Reset token is required"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: passwordSchema,
 });
 
 export async function POST(req: NextRequest) {
@@ -26,8 +27,8 @@ export async function POST(req: NextRequest) {
             error: {
                 type: ErrorType.VALIDATION,
                 code: ErrorCode.VALIDATION_ERROR,
-                message: err.issues[0].message
-            }
+                message: err.issues[0].message,
+            },
         }, { status: 400 });
 
         if (err instanceof AppError) return NextResponse.json({
@@ -35,8 +36,8 @@ export async function POST(req: NextRequest) {
             error: {
                 type: err.type,
                 code: err.code,
-                message: err.message
-            }
+                message: err.message,
+            },
         }, { status: err.statusCode });
 
         return NextResponse.json({
@@ -44,8 +45,8 @@ export async function POST(req: NextRequest) {
             error: {
                 type: ErrorType.SERVER,
                 code: ErrorCode.INTERNAL_SERVER_ERROR,
-                message: "Something went wrong"
-            }
+                message: "Something went wrong",
+            },
         }, { status: 500 });
     }
 }
