@@ -95,7 +95,8 @@ schedli/
 │   └── utils/
 │       ├── AppError.ts                     # Custom error class
 │       ├── errorCodes.ts                   # Error type and code constants
-│       └── email.templates.ts              # HTML email templates
+│       ├── email.templates.ts              # HTML email templates
+│       └── validation.ts                   # Shared Zod validation schemas
 │
 ├── types/
 │   ├── ui.types.ts                         # UI component prop types
@@ -107,10 +108,12 @@ schedli/
 │   ├── api.ts                              # Configured Axios instance with refresh interceptor
 │   └── error.ts                            # getErrorMessage utility
 │
-└── docs/
-    ├── api.md
-    ├── architecture.md
-    └── database.md
+├── docs/
+│   ├── api.md
+│   ├── architecture.md
+│   └── database.md
+│
+└── proxy.ts                                # Route protection (Next.js 16 Proxy)
 ```
 
 ---
@@ -167,6 +170,13 @@ Mongoose schemas with field definitions, types, and validation constraints. No b
 
 These are called at the start of route handlers for all protected routes.
 
+### Proxy (`proxy.ts`)
+
+Next.js 16 Proxy runs at the edge on every navigation and page refresh. It reads `schedli_sid`, verifies it with `jose`, and enforces two rules:
+
+- Unauthenticated requests to protected routes are redirected to `/auth/sign-in`
+- Authenticated requests to auth routes are redirected to `/dashboard`
+
 ---
 
 ## Authentication
@@ -187,8 +197,9 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 3. A short-lived access token (15 minutes) and a long-lived refresh token (30 days) are signed using separate secrets
 4. The refresh token is stored on the user document
 5. Both tokens are set as `httpOnly` cookies — the access token is never returned in the response body
-6. If `rememberMe` is false, the `schedli_sid` cookie has no `maxAge` and expires when the browser closes
-7. Only the user object is returned in the response
+6. If `rememberMe` is false, both cookies have no `maxAge` and expire when the browser closes
+7. If `rememberMe` is true, `schedli_sid` gets a 15-minute `maxAge` and `schedli_rt` gets a 30-day `maxAge`
+8. Only the user object is returned in the response
 
 **Token refresh flow:**
 
@@ -210,7 +221,7 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 
 1. A reset token is generated and stored on the user document with a 1-hour expiry
 2. A reset link is emailed to the user
-3. On submission, the token is validated, the password is updated, and the token is cleared
+3. On submission, the token is validated, the password is updated, the reset token is cleared, and the refresh token is cleared — invalidating all active sessions
 
 ---
 
@@ -253,4 +264,5 @@ All error responses follow the same structure:
 | `JWT_ACCESS_SECRET`  | Secret used to sign and verify access tokens  |
 | `JWT_REFRESH_SECRET` | Secret used to sign and verify refresh tokens |
 | `RESEND_API_KEY`     | Resend API key for sending email              |
+| `RESEND_FROM_EMAIL`  | Sender email address for outgoing emails      |
 | `APP_URL`            | Base URL used in email links                  |

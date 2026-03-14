@@ -85,13 +85,20 @@ When the access token expires, the Axios interceptor in `utils/api.ts` silently 
 
 **Errors:**
 
-| Status | Code                        | Message                                     |
-| ------ | --------------------------- | ------------------------------------------- |
-| 400    | `VALIDATION_ERROR`          | "Full name must be at least 2 characters"   |
-| 400    | `VALIDATION_ERROR`          | "Invalid email address"                     |
-| 400    | `VALIDATION_ERROR`          | "Password must be at least 8 characters"    |
-| 409    | `AUTH_EMAIL_ALREADY_EXISTS` | "An account with this email already exists" |
-| 500    | `INTERNAL_SERVER_ERROR`     | "Something went wrong"                      |
+| Status | Code                        | Message                                                |
+| ------ | --------------------------- | ------------------------------------------------------ |
+| 400    | `VALIDATION_ERROR`          | "Full name must be at least 2 characters"              |
+| 400    | `VALIDATION_ERROR`          | "Full name must be at most 100 characters"             |
+| 400    | `VALIDATION_ERROR`          | "Invalid email address"                                |
+| 400    | `VALIDATION_ERROR`          | "Email must be at most 254 characters"                 |
+| 400    | `VALIDATION_ERROR`          | "Password must be at least 8 characters"               |
+| 400    | `VALIDATION_ERROR`          | "Password must be at most 72 characters"               |
+| 400    | `VALIDATION_ERROR`          | "Password must contain at least one uppercase letter"  |
+| 400    | `VALIDATION_ERROR`          | "Password must contain at least one lowercase letter"  |
+| 400    | `VALIDATION_ERROR`          | "Password must contain at least one number"            |
+| 400    | `VALIDATION_ERROR`          | "Password must contain at least one special character" |
+| 409    | `AUTH_EMAIL_ALREADY_EXISTS` | "An account with this email already exists"            |
+| 500    | `INTERNAL_SERVER_ERROR`     | "Something went wrong"                                 |
 
 ---
 
@@ -126,7 +133,7 @@ When the access token expires, the Axios interceptor in `utils/api.ts` silently 
 }
 ```
 
-Both the `schedli_sid` and `schedli_rt` are set as `httpOnly` cookies. The `schedli_rt` always has a 30-day `maxAge`. The `schedli_sid` only has a `maxAge` (15 minutes) if `rememberMe` is true — otherwise it is a session cookie that expires when the browser closes.
+Both the `schedli_sid` and `schedli_rt` are set as `httpOnly` cookies. When `rememberMe` is false, both cookies are session cookies with no `maxAge` — they expire when the browser closes. When `rememberMe` is true, `schedli_sid` gets a 15-minute `maxAge` and `schedli_rt` gets a 30-day `maxAge`.
 
 **Errors:**
 
@@ -287,14 +294,21 @@ The response is identical whether or not the email exists. This prevents user en
 }
 ```
 
+On success, the user's password is updated, all active sessions are invalidated by clearing the refresh token from the database, and the reset token is cleared.
+
 **Errors:**
 
-| Status | Code                    | Message                                  |
-| ------ | ----------------------- | ---------------------------------------- |
-| 400    | `VALIDATION_ERROR`      | "Reset token is required"                |
-| 400    | `VALIDATION_ERROR`      | "Password must be at least 8 characters" |
-| 400    | `AUTH_EXPIRED_TOKEN`    | "Invalid or expired reset link"          |
-| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"                   |
+| Status | Code                    | Message                                                |
+| ------ | ----------------------- | ------------------------------------------------------ |
+| 400    | `VALIDATION_ERROR`      | "Reset token is required"                              |
+| 400    | `VALIDATION_ERROR`      | "Password must be at least 8 characters"               |
+| 400    | `VALIDATION_ERROR`      | "Password must be at most 72 characters"               |
+| 400    | `VALIDATION_ERROR`      | "Password must contain at least one uppercase letter"  |
+| 400    | `VALIDATION_ERROR`      | "Password must contain at least one lowercase letter"  |
+| 400    | `VALIDATION_ERROR`      | "Password must contain at least one number"            |
+| 400    | `VALIDATION_ERROR`      | "Password must contain at least one special character" |
+| 400    | `AUTH_EXPIRED_TOKEN`    | "Invalid or expired reset link"                        |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"                                 |
 
 ---
 
@@ -325,8 +339,7 @@ The response is identical whether or not the email exists. This prevents user en
 
 **Errors:**
 
-| Status | Code                        | Message                            |
-| ------ | --------------------------- | ---------------------------------- |
-| 400    | `VALIDATION_ERROR`          | "Invalid email address"            |
-| 400    | `AUTH_EMAIL_ALREADY_EXISTS` | "This account is already verified" |
-| 500    | `INTERNAL_SERVER_ERROR`     | "Something went wrong"             |
+| Status | Code                    | Message                 |
+| ------ | ----------------------- | ----------------------- |
+| 400    | `VALIDATION_ERROR`      | "Invalid email address" |
+| 500    | `INTERNAL_SERVER_ERROR` | "Something went wrong"  |
