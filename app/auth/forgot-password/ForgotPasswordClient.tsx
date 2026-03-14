@@ -44,10 +44,10 @@ export default function ForgotPasswordClient() {
       {/*==================== Icon ====================*/}
       <div className="flex justify-center lg:justify-start mb-8">
         <Image
-          src="/icon.png"
-          alt="Schedli"
           width={56}
           height={56}
+          src="/icon.png"
+          alt="Schedli | Icon"
           className="w-10 h-auto"
         />
       </div>
@@ -86,14 +86,13 @@ export default function ForgotPasswordClient() {
         {/*==================== End of Submit Button ====================*/}
 
         {/*==================== Back To Login ====================*/}
-        <Button
-          variant="ghost"
+        <button
           onClick={() => router.push("/auth/sign-in")}
           className="flex items-center gap-1.5 text-small text-text hover:text-heading transition-colors cursor-pointer"
         >
           <ArrowLeft size={15} />
           Back To Login
-        </Button>
+        </button>
         {/*==================== End of Back To Login ====================*/}
       </div>
     </div>
