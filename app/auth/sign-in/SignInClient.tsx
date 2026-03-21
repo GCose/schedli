@@ -49,8 +49,8 @@ export default function SignInClient() {
         <Image
           width={56}
           height={56}
-          alt="Schedli"
           src="/icon.png"
+          alt="Schedli | Icon"
           className="w-10 h-auto"
         />
       </div>
