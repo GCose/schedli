@@ -18,7 +18,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
           className="hidden lg:flex relative p-3 basis-[60%] shrink-0"
           transition={{ type: "spring", stiffness: 100, damping: 12 }}
         >
-          <div className="relative w-full h-full rounded-2xl overflow-hidden z-100">
+          <div className="relative w-full h-full rounded-tl-4xl rounded-br-4xl overflow-hidden z-100">
             <Image
               fill
               priority
