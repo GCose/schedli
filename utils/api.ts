@@ -12,10 +12,10 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         const is401 = error.response?.status === 401;
-        const isRefreshRoute = originalRequest.url?.includes("/auth/refresh");
+        const isAuthRoute = originalRequest.url?.includes("/auth/");
         const hasNotRetried = !originalRequest._retry;
 
-        if (is401 && !isRefreshRoute && hasNotRetried) {
+        if (is401 && !isAuthRoute && hasNotRetried) {
             originalRequest._retry = true;
 
             try {
