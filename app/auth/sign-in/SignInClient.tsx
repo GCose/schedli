@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { AxiosError } from "axios";
 import { ErrorResponse } from "@/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { getErrorMessage } from "@/utils/error";
@@ -15,6 +15,7 @@ import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 
 export default function SignInClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +31,8 @@ export default function SignInClient() {
         description: "You have signed in successfully.",
         duration: 3000,
       });
-      router.push("/dashboard");
+      const callbackUrl = searchParams.get("callbackUrl");
+      router.push(callbackUrl || "/dashboard");
     } catch (err) {
       const { message } = getErrorMessage(err as AxiosError<ErrorResponse>);
       toast.error("Sign in failed", {
