@@ -25,6 +25,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
+      type="button"
       disabled={disabled || loading}
       className={`
         cursor-pointer inline-flex items-center justify-center font-semibold rounded-xl
