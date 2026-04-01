@@ -50,7 +50,7 @@ No cross-collection relationships exist yet. The `organizationId` field on the U
 
 Passwords are hashed using bcrypt before being written to the database. The plain text password never touches the database at any point.
 
-Verification and reset tokens are single-use strings. Once consumed, they are cleared from the document immediately. Expiry fields enforce time limits independent of whether the token has been used.
+Verification and reset tokens are single-use. Once consumed, they are cleared from the document immediately. Expiry fields enforce time limits independent of whether the token has been used. All three token fields (`emailVerificationToken`, `passwordResetToken`, `refreshToken`) are stored as SHA-256 hashes — the raw token is sent to the user (via email or cookie) but never persisted. On lookup, the incoming token is hashed and compared against the stored hash.
 
 Refresh tokens are stored on the user document and rotated on every use — when a new access token is issued, the old refresh token is invalidated and replaced. On logout, the refresh token is cleared from the database entirely, preventing any further silent re-authentication.
 

@@ -33,6 +33,10 @@ function generateToken(): string {
     return crypto.randomBytes(32).toString("hex");
 }
 
+function hashToken(token: string): string {
+    return crypto.createHash("sha256").update(token).digest("hex");
+}
+
 function signAccessToken(payload: JWTPayload): string {
     return jwt.sign(payload, JWT_ACCESS_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
 }
@@ -64,7 +68,7 @@ export async function registerUser(input: RegisterInput): Promise<void> {
         fullName: input.fullName,
         email: input.email,
         password: hashedPassword,
-        emailVerificationToken,
+        emailVerificationToken: hashToken(emailVerificationToken),
         emailVerificationExpiry,
     });
 
@@ -122,7 +126,7 @@ export async function loginUser(input: LoginInput): Promise<LoginServiceResult> 
     const accessToken = signAccessToken(accessPayload);
     const refreshToken = signRefreshToken(refreshPayload);
 
-    user.refreshToken = refreshToken;
+    user.refreshToken = hashToken(refreshToken);
     await user.save();
 
     return {
@@ -158,7 +162,7 @@ export async function refreshAccessToken(
 
     const user = await User.findOne({
         _id: payload.userId,
-        refreshToken: token,
+        refreshToken: hashToken(token),
     });
 
     if (!user) {
@@ -185,7 +189,7 @@ export async function refreshAccessToken(
     const newAccessToken = signAccessToken(newAccessPayload);
     const newRefreshToken = signRefreshToken(newRefreshPayload);
 
-    user.refreshToken = newRefreshToken;
+    user.refreshToken = hashToken(newRefreshToken);
     await user.save();
 
     return {
@@ -211,7 +215,7 @@ export async function forgotPassword(input: ForgotPasswordInput): Promise<void> 
         Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
     );
 
-    user.passwordResetToken = passwordResetToken;
+    user.passwordResetToken = hashToken(passwordResetToken);
     user.passwordResetExpiry = passwordResetExpiry;
     await user.save();
 
@@ -226,7 +230,7 @@ export async function resetPassword(input: ResetPasswordInput): Promise<void> {
     await connectDB();
 
     const user = await User.findOne({
-        passwordResetToken: input.token,
+        passwordResetToken: hashToken(input.token),
         passwordResetExpiry: { $gt: new Date() },
     });
 
@@ -250,7 +254,7 @@ export async function verifyEmail(input: VerifyEmailInput): Promise<void> {
     await connectDB();
 
     const user = await User.findOne({
-        emailVerificationToken: input.token,
+        emailVerificationToken: hashToken(input.token),
         emailVerificationExpiry: { $gt: new Date() },
     });
 
@@ -281,7 +285,7 @@ export async function resendVerificationEmail(email: string): Promise<void> {
         Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000
     );
 
-    user.emailVerificationToken = emailVerificationToken;
+    user.emailVerificationToken = hashToken(emailVerificationToken);
     user.emailVerificationExpiry = emailVerificationExpiry;
     await user.save();
 

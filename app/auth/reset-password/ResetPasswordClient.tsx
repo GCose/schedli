@@ -23,6 +23,34 @@ export default function ResetPasswordClient() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  if (!token) {
+    return (
+      <div className="w-full">
+        <div className="flex justify-center lg:justify-start mb-8">
+          <Image
+            width={56}
+            height={56}
+            src="/icon.png"
+            alt="Schedli | Icon"
+            className="w-10 h-auto"
+          />
+        </div>
+        <h1 className="text-title font-bold text-heading leading-tight mb-2">
+          Invalid Reset Link
+        </h1>
+        <p className="text-body text-text mb-8">
+          This password reset link is invalid or has expired. Please request a new one.
+        </p>
+        <button
+          onClick={() => router.push("/auth/forgot-password")}
+          className="text-small font-semibold text-primary hover:underline cursor-pointer"
+        >
+          Request New Reset Link
+        </button>
+      </div>
+    );
+  }
+
   async function handleSubmit() {
     if (password !== confirmPassword) {
       toast.error("Passwords do not match", {

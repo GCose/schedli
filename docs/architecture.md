@@ -125,15 +125,15 @@ A request to any API route follows this path:
 ```
 HTTP Request
     → Route Handler (app/api/)
-        → connectDB()
         → Zod schema validation
         → Service function (lib/services/)
+            → connectDB()
             → Mongoose model (lib/models/)
             → MongoDB
         → NextResponse
 ```
 
-The route handler never contains business logic. It handles three things: connecting to the database, validating the request body, and calling the appropriate service function.
+The route handler never contains business logic. It handles two things: validating the request body and calling the appropriate service function. The database connection is established inside the service layer.
 
 ---
 
@@ -143,7 +143,6 @@ The route handler never contains business logic. It handles three things: connec
 
 Equivalent to controllers in an MVC pattern. Each handler:
 
-- Connects to the database
 - Parses and validates the request body with Zod
 - Calls one service function
 - Returns a `NextResponse` with the appropriate status code
@@ -186,8 +185,8 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 **Registration flow:**
 
 1. Password is hashed with bcrypt before storage
-2. A verification token is generated and stored on the user document with a 24-hour expiry
-3. A verification email is sent via Resend
+2. A verification token is generated, hashed with SHA-256, and the hash is stored on the user document with a 24-hour expiry
+3. The raw token is sent in the verification email link
 4. The account cannot be used until the email is verified
 
 **Login flow:**
@@ -195,7 +194,7 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 1. Email and password are checked against the database
 2. Unverified accounts are rejected with a 403
 3. A short-lived access token (15 minutes) and a long-lived refresh token (30 days) are signed using separate secrets
-4. The refresh token is stored on the user document
+4. The refresh token is hashed with SHA-256 and the hash is stored on the user document
 5. Both tokens are set as `httpOnly` cookies — the access token is never returned in the response body
 6. If `rememberMe` is false, both cookies have no `maxAge` and expire when the browser closes
 7. If `rememberMe` is true, `schedli_sid` gets a 15-minute `maxAge` and `schedli_rt` gets a 30-day `maxAge`
@@ -219,9 +218,9 @@ Authentication uses manual JWT with an access token and refresh token pattern �
 
 **Password reset flow:**
 
-1. A reset token is generated and stored on the user document with a 1-hour expiry
-2. A reset link is emailed to the user
-3. On submission, the token is validated, the password is updated, the reset token is cleared, and the refresh token is cleared — invalidating all active sessions
+1. A reset token is generated, hashed with SHA-256, and the hash is stored on the user document with a 1-hour expiry
+2. The raw token is sent in the reset email link
+3. On submission, the incoming token is hashed and matched against the stored hash, the password is updated, the reset token is cleared, and the refresh token is cleared — invalidating all active sessions
 
 ---
 

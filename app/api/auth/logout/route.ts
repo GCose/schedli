@@ -1,4 +1,3 @@
-import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
 import { logoutUser } from "@/lib/services/auth.service";
@@ -7,7 +6,6 @@ import { extractCookieToken, verifyAccessToken } from "@/lib/middleware/auth.mid
 
 export async function POST(req: NextRequest) {
     try {
-        await connectDB();
         const token = extractCookieToken(req);
         const payload = verifyAccessToken(token);
         await logoutUser(payload.userId);
