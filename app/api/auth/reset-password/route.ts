@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
 import { passwordSchema } from "@/lib/utils/validation";
@@ -13,7 +12,6 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
     try {
-        await connectDB();
         const body = schema.parse(await req.json());
         await resetPassword(body);
 

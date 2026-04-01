@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyEmail } from "@/lib/services/auth.service";
@@ -11,7 +10,6 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
     try {
-        await connectDB();
         const { token } = schema.parse(await req.json());
         await verifyEmail({ token });
 

@@ -1,4 +1,3 @@
-import { connectDB } from "@/lib/db";
 import { AppError } from "@/lib/utils/AppError";
 import { NextRequest, NextResponse } from "next/server";
 import { ErrorType, ErrorCode } from "@/lib/utils/errorCodes";
@@ -8,7 +7,6 @@ const isProduction = process.env.NODE_ENV === "production";
 
 export async function POST(req: NextRequest) {
     try {
-        await connectDB();
         const token = req.cookies.get("schedli_rt")?.value;
 
         if (!token) {
