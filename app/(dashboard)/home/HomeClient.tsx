@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { getErrorMessage } from "@/utils/error";
 
-export default function DashboardClient() {
+export default function HomeClient() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
